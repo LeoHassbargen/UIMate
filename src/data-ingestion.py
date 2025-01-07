@@ -37,18 +37,20 @@ start_time = time.time()
 all_loaded = True
 
 # Load the images from the combined folder
-images = []
+images = {}
+start_time = time.time()
 for image_name in image_names:
     image_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'combined', f'{image_name}.jpg'))
     image = cv2.imread(image_path)
     
     if image is not None:
-        images.append(image)
+        images[image_name] = image
     else:
         all_loaded = False
-        print(f"Warning: Image {image_path} could not be loaded.")
+
 
 stop_time = time.time()
+
 print(f"Loaded the images in {stop_time - start_time} seconds.")
 
 print(f"Loaded {len(images)} images.")
@@ -58,17 +60,17 @@ print(f"All images loaded successfully: {all_loaded}")
 # Resize the images to 224x224
 print("Resizing images to 224x224.")
 start_time = time.time()
-images = [cv2.resize(image, (224, 224)) for image in images]
+images = {key: cv2.resize(image, (224, 224)) for key, image in images.items()}
 stop_time = time.time()
 print(f"Resized all images in {stop_time - start_time} seconds.")
 
 # Normalize the images
 print("Normalizing images.")
-images = [image / 255 for image in images]
+images = {key: image / 255.0 for key, image in images.items()}
 print("Normalized all images.")
 
 # Convert the images to numpy arrays
-images = np.array(images)
+images = {key: np.array(image) for key, image in images.items()}
 
 # 4.
 
