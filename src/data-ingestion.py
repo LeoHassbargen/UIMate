@@ -26,6 +26,27 @@ print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
 uicrit = uicrit.drop(columns=['comments', 'comments_source'])
 print(f"Cut off the columns 'comments' and 'comments_source'.")
 
+# Define the rating scales
+rating_scales = {
+    'aesthetics_rating': 10,       # Scale 1-10
+    'learnability': 5,            # Scale 1-5
+    'efficency': 5,               # Scale 1-5
+    'usability_rating': 10,       # Scale 1-10
+    'design_quality_rating': 10   # Scale 1-10
+}
+
+# Normalize the relevant rating columns
+# We divide each rating by its maximum value (specified above).
+print("Normalizing the rating columns.")
+start_time = time.time()
+for col, scale in rating_scales.items():
+    if col in uicrit.columns:
+        uicrit[col] = uicrit[col] / scale
+        print(f"Normalized '{col}' by a factor of {scale}.")
+
+stop_time = time.time()
+print(f"Normalized all rating columns in {stop_time - start_time} seconds.")
+
 # 2.
 import cv2
 import numpy as np
@@ -90,6 +111,7 @@ print("Saved images.")
 print(f"Saving uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
 try:
     uicrit.to_csv(os.path.join(data_dir, 'uicrit.csv'))
+    np.save(os.path.join(data_dir, 'rating_scales.npy'), rating_scales)
 except FileNotFoundError:
     print(f"Error: Could not save the uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
     exit(1)
