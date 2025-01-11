@@ -28,4 +28,4 @@ jobs:
         run: poetry install
       - name: Run pylint
         run: |
-          pylint $(git ls-files '*.py')
+          poetry run pylint $(git ls-files '*.py')
