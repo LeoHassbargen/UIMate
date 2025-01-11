@@ -9,7 +9,9 @@ import os
 import pandas as pd
 import time
 
-uicrit_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uicrit/uicrit_public.csv'))
+uicrit_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "uicrit/uicrit_public.csv")
+)
 
 print(f"Loading uicrit dataset from {uicrit_path}")
 start_time = time.time()
@@ -23,14 +25,14 @@ print(f"Loaded the uicrit dataset in {stop_time - start_time} seconds.")
 print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
 
 # Cutoff the columns that are not needed: comments, comments_source
-uicrit = uicrit.drop(columns=['comments', 'comments_source'])
+uicrit = uicrit.drop(columns=["comments", "comments_source"])
 print(f"Cut off the columns 'comments' and 'comments_source'.")
 
 # 2.
 import cv2
 import numpy as np
 
-image_names = uicrit['rico_id'].values
+image_names = uicrit["rico_id"].values
 
 print(f"Loading {len(image_names)} images from the combined folder.")
 start_time = time.time()
@@ -40,9 +42,11 @@ all_loaded = True
 images = {}
 start_time = time.time()
 for image_name in image_names:
-    image_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'combined', f'{image_name}.jpg'))
+    image_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "combined", f"{image_name}.jpg")
+    )
     image = cv2.imread(image_path)
-    
+
     if image is not None:
         images[image_name] = image
     else:
@@ -75,22 +79,26 @@ images = {key: np.array(image) for key, image in images.items()}
 # 4.
 
 # Ensure the data directory exists
-data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 os.makedirs(data_dir, exist_ok=True)
 
 # Save both the images and the uicrit dataset to the file system
 print(f"Saving images to {os.path.join(data_dir, 'images.npy')}.")
 try:
-    np.save(os.path.join(data_dir, 'images.npy'), images)
+    np.save(os.path.join(data_dir, "images.npy"), images)
 except FileNotFoundError:
-    print(f"Error: Could not save the images to {os.path.join(data_dir, 'images.npy')}.")
+    print(
+        f"Error: Could not save the images to {os.path.join(data_dir, 'images.npy')}."
+    )
     exit(1)
 print("Saved images.")
 
 print(f"Saving uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
 try:
-    uicrit.to_csv(os.path.join(data_dir, 'uicrit.csv'))
+    uicrit.to_csv(os.path.join(data_dir, "uicrit.csv"))
 except FileNotFoundError:
-    print(f"Error: Could not save the uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
+    print(
+        f"Error: Could not save the uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}."
+    )
     exit(1)
 print("Saved uicrit dataset.")
