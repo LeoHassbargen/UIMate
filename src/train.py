@@ -53,7 +53,7 @@ print(f"Training completed in {end_time - start_time:.2f} seconds.")
 model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "model"))
 os.makedirs(model_dir, exist_ok=True)
 
-model_name = base_name + get_evaluation_split_size() + LOSS + ".keras"
+model_name = base_name + "-" + str(get_evaluation_split_size()) + "-" + LOSS + ".keras"
 
 model_path = os.path.join(model_dir, model_name)
 model.save(model_path)

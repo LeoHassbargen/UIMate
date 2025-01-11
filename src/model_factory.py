@@ -23,4 +23,4 @@ def create_simple_cnn(input_shape=(224, 224, 3), output_dim=5):
     model.add(layers.Dense(64, activation="relu"))
     model.add(layers.Dense(output_dim))
 
-    return model, "simple_cnn"
+    return model, "simple-cnn"
