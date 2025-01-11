@@ -106,8 +106,11 @@ def create_simple_cnn(input_shape=(224, 224, 3), output_dim=5):
     output_dim=5, z.B. [ aesth, learn, effic, usability, design_quality ]
     """
     model = models.Sequential()
+    # Define an explicit input layer
+    model.add(tf.keras.Input(shape=input_shape))
+
     # First convolution layer
-    model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape))
+    model.add(layers.Conv2D(32, (3, 3), activation='relu'))
     model.add(layers.MaxPooling2D((2, 2)))
 
     # Second convolution layer
