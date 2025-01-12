@@ -25,8 +25,11 @@ print(f"Loaded the uicrit dataset in {stop_time - start_time} seconds.")
 print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
 
 # Cutoff the columns that are not needed: comments, comments_source
-uicrit = uicrit.drop(columns=["comments", "comments_source"])
-print(f"Cut off the columns 'comments' and 'comments_source'.")
+uicrit = uicrit.drop(columns=["task", "comments", "comments_source"])
+print(f"Cut off the columns 'task', 'comments' and 'comments_source'.")
+
+# Remove all nan values
+uicrit = uicrit.dropna()
 
 # Define the rating scales
 rating_scales = {
@@ -39,6 +42,7 @@ rating_scales = {
 
 # Normalize the relevant rating columns
 # We divide each rating by its maximum value (specified above).
+# To scale the ratings to the range [0, 1].
 print("Normalizing the rating columns.")
 start_time = time.time()
 for col, scale in rating_scales.items():
@@ -48,6 +52,24 @@ for col, scale in rating_scales.items():
 
 stop_time = time.time()
 print(f"Normalized all rating columns in {stop_time - start_time} seconds.")
+
+# Standardize the ratings
+# We subtract the mean and divide by the standard deviation.
+# This ensures that the ratings have a mean of 0 and a standard deviation of 1.
+
+# print("Standardizing the rating columns.")
+# start_time = time.time()
+
+# for col in rating_scales.keys():
+#     uicrit[col] = (uicrit[col] - uicrit[col].mean()) / uicrit[col].std()
+
+# stop_time = time.time()
+# print(f"Standardized all rating columns in {stop_time - start_time} seconds.")
+
+# # Print the variance for each dimension
+# print(f"Variance of the ratings:")
+# for col in rating_scales.keys():
+#     print(f"  {col}: {uicrit[col].var()}")
 
 # 2.
 import cv2

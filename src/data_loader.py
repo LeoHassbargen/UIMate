@@ -74,8 +74,9 @@ print(
 )
 
 # convert NaN to 0 (if any)
-X = np.nan_to_num(X)
-y = np.nan_to_num(y)
+# as data ingestion should take care of NaN values, this will be ignored for now
+# X = np.nan_to_num(X)
+# y = np.nan_to_num(y)
 
 
 # 4. Split the data into training and validation sets

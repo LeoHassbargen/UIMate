@@ -20,7 +20,7 @@ from data_loader import (
     get_evaluation_split_size,
 )
 
-from model_factory import create_simple_cnn
+from model_factory import create_simple_cnn, build_mean_baseline_model
 
 
 LOSS = os.getenv("LOSS", "mse")
@@ -33,7 +33,7 @@ X_val, y_val = get_validation_data()
 
 # 5. Define the model
 
-model, base_name = create_simple_cnn(input_shape=(224, 224, 3), output_dim=5)
+model, base_name = build_mean_baseline_model(input_shape=(224, 224, 3))
 
 # 6. Compile and train the model
 model.compile(
@@ -43,7 +43,7 @@ model.compile(
 print("Starting training...")
 start_time = time.time()
 history = model.fit(
-    X_train, y_train, validation_data=(X_val, y_val), epochs=5, batch_size=16
+    X_train, y_train, validation_data=(X_val, y_val), epochs=15, batch_size=16
 )
 end_time = time.time()
 print(f"Training completed in {end_time - start_time:.2f} seconds.")
