@@ -14,10 +14,16 @@ import time
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import tensorflow as tf
 
-from data_loader import get_training_data, get_validation_data
+from data_loader import (
+    get_training_data,
+    get_validation_data,
+    get_evaluation_split_size,
+)
 
 from model_factory import create_simple_cnn
 
+
+LOSS = os.getenv("LOSS", "mse")
 
 # Get the training data:
 X_train, y_train = get_training_data()
@@ -27,30 +33,29 @@ X_val, y_val = get_validation_data()
 
 # 5. Define the model
 
-model = create_simple_cnn(input_shape=(224, 224, 3), output_dim=5)
+model, base_name = create_simple_cnn(input_shape=(224, 224, 3), output_dim=5)
 
 # 6. Compile and train the model
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), 
-             loss='mse', 
-             metrics=['mae'])
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mae"]
+)
 
 print("Starting training...")
 start_time = time.time()
 history = model.fit(
-    X_train, y_train,
-    validation_data=(X_val, y_val),
-    epochs=5,
-    batch_size=16
+    X_train, y_train, validation_data=(X_val, y_val), epochs=5, batch_size=16
 )
 end_time = time.time()
 print(f"Training completed in {end_time - start_time:.2f} seconds.")
 
 
 # 7. Save the model
-model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'model'))
+model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "model"))
 os.makedirs(model_dir, exist_ok=True)
 
-model_path = os.path.join(model_dir, 'my_model.keras')
+model_name = base_name + "-" + str(get_evaluation_split_size()) + "-" + LOSS + ".keras"
+
+model_path = os.path.join(model_dir, model_name)
 model.save(model_path)
 
 print(f"Model saved to {model_path}.")
