@@ -20,10 +20,15 @@ from data_loader import (
     get_evaluation_split_size,
 )
 
-from model_factory import create_simple_cnn
+from model_factory import (
+    create_simple_cnn,
+    create_resnet_50_model,
+    create_resnet_151v2_model,
+)
 
 
 LOSS = os.getenv("LOSS", "mse")
+EPOCHS = os.getenv("EPOCHS", 10)
 
 # Get the training data:
 X_train, y_train = get_training_data()
@@ -33,7 +38,7 @@ X_val, y_val = get_validation_data()
 
 # 5. Define the model
 
-model, base_name = create_simple_cnn(input_shape=(224, 224, 3), output_dim=5)
+model, base_name = create_resnet_151v2_model(input_shape=(224, 224, 3), output_dim=5)
 
 # 6. Compile and train the model
 model.compile(
@@ -43,7 +48,7 @@ model.compile(
 print("Starting training...")
 start_time = time.time()
 history = model.fit(
-    X_train, y_train, validation_data=(X_val, y_val), epochs=5, batch_size=16
+    X_train, y_train, validation_data=(X_val, y_val), epochs=EPOCHS, batch_size=16
 )
 end_time = time.time()
 print(f"Training completed in {end_time - start_time:.2f} seconds.")
@@ -53,7 +58,9 @@ print(f"Training completed in {end_time - start_time:.2f} seconds.")
 model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "model"))
 os.makedirs(model_dir, exist_ok=True)
 
-model_name = base_name + "-" + str(get_evaluation_split_size()) + "-" + LOSS + ".keras"
+model_name = (
+    base_name + "-" + str(get_evaluation_split_size()) + "-" + LOSS + "-" + ".keras"
+)
 
 model_path = os.path.join(model_dir, model_name)
 model.save(model_path)
