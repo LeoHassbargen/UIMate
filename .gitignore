@@ -175,3 +175,7 @@ cython_debug/
 combined/
 uicrit/
 data/
+model/
+
+# MacOS
+.DS_Store
