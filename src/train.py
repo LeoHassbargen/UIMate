@@ -28,7 +28,7 @@ from model_factory import (
 
 
 LOSS = os.getenv("LOSS", "mse")
-EPOCHS = os.getenv("EPOCHS", 10)
+EPOCHS = os.getenv("EPOCHS", 50)
 
 # Get the training data:
 X_train, y_train = get_training_data()
@@ -59,7 +59,14 @@ model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "model
 os.makedirs(model_dir, exist_ok=True)
 
 model_name = (
-    base_name + "-" + str(get_evaluation_split_size()) + "-" + LOSS + "-" + ".keras"
+    base_name
+    + "-"
+    + str(get_evaluation_split_size())
+    + "-"
+    + LOSS
+    + "-"
+    + str(EPOCHS)
+    + ".keras"
 )
 
 model_path = os.path.join(model_dir, model_name)
