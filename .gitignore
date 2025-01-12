@@ -176,6 +176,7 @@ combined/
 uicrit/
 data/
 model/
+logs/
 
 # MacOS
 .DS_Store

@@ -1,5 +1,10 @@
 import os
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+)
 import tensorflow as tf
 import numpy as np
 
@@ -28,7 +33,22 @@ def evaluate_model(model_path, X_val, y_val):
 
     # 2) Loop through each dimension to compute metrics individually
     print("\nDetailed per-dimension metrics:")
+    per_dimension_metrics = {}
+
     for i, rating_name in enumerate(rating_scales.keys()):
         dim_mse = mean_squared_error(y_val[:, i], predictions[:, i])
         dim_mae = mean_absolute_error(y_val[:, i], predictions[:, i])
+
         print(f"  {rating_name}: MSE = {dim_mse:.4f}, MAE = {dim_mae:.4f}")
+
+        per_dimension_metrics[rating_name] = {
+            "mse": dim_mse,
+            "mae": dim_mae,
+        }
+
+    # Return a dictionary with all relevant metrics
+    return {
+        "overall_mse": mse,
+        "overall_mae": mae,
+        "per_dimension": per_dimension_metrics,
+    }
