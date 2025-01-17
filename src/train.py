@@ -9,18 +9,31 @@
 # 8. Save the model to the file system
 
 import os
+import sys
 import time
 
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+import keras
 import tensorflow as tf
 
 from data_loader import (
     get_training_data,
     get_validation_data,
     get_evaluation_split_size,
+    get_mean_ratings,
 )
 
-from model_factory import create_simple_cnn
+# Fügen Sie den Pfad zu src/train hinzu
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "train")))
+
+# Import weighted_mse_around_mean from src/train/loss.py
+from loss import weighted_mse_around_mean
+
+from model_factory import (
+    create_simple_cnn,
+    create_mean_baseline_model,
+    create_pretrained_resnet_cnn,
+    create_pretrained_resnet_cnn_with_features,
+)
 
 
 LOSS = os.getenv("LOSS", "mse")
@@ -33,17 +46,47 @@ X_val, y_val = get_validation_data()
 
 # 5. Define the model
 
-model, base_name = create_simple_cnn(input_shape=(224, 224, 3), output_dim=5)
+model, base_name = create_pretrained_resnet_cnn_with_features(
+    input_shape=(224, 224, 3),
+    edge_input_shape=(56, 56),
+    histogram_input_shape=(512,),
+    output_dim=5,
+    trainable=False,
+)
+
+
+@keras.saving.register_keras_serializable(package="Custom", name="custom_weighted_mse")
+def custom_weighted_mse(y_true, y_pred):
+    mean_ratings = get_mean_ratings()
+    return weighted_mse_around_mean(y_true, y_pred, mean_ratings, 0.5)
+
 
 # 6. Compile and train the model
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mae"]
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+    loss=custom_weighted_mse,
+    metrics=["mae"],
 )
 
 print("Starting training...")
 start_time = time.time()
 history = model.fit(
-    X_train, y_train, validation_data=(X_val, y_val), epochs=5, batch_size=16
+    x={
+        "image_input": X_train["image_input"],
+        "histogram_input": X_train["histogram_input"],
+        "edge_input": X_train["edge_input"],
+    },
+    y=y_train,
+    validation_data=(
+        {
+            "image_input": X_val["image_input"],
+            "histogram_input": X_val["histogram_input"],
+            "edge_input": X_val["edge_input"],
+        },
+        y_val,
+    ),
+    epochs=10,
+    batch_size=16,
 )
 end_time = time.time()
 print(f"Training completed in {end_time - start_time:.2f} seconds.")
