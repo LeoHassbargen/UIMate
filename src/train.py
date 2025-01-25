@@ -85,7 +85,7 @@ history = model.fit(
         },
         y_val,
     ),
-    epochs=10,
+    epochs=60,
     batch_size=16,
 )
 end_time = time.time()

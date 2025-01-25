@@ -177,16 +177,16 @@ def create_pretrained_resnet_cnn_with_features(
     x = resnet(image_input)
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dense(512, activation="relu")(x)
-    x = layers.Dropout(0.5)(x)
+    x = layers.Dropout(0.6)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dense(256, activation="relu")(x)
-    x = layers.Dropout(0.5)(x)
+    x = layers.Dropout(0.6)(x)
 
     # Histogram Input und Verarbeitung
     histogram_input = layers.Input(shape=histogram_input_shape, name="histogram_input")
     h = layers.Dense(128, activation="relu")(histogram_input)
     h = layers.BatchNormalization()(h)
-    h = layers.Dropout(0.3)(h)
+    h = layers.Dropout(0.4)(h)
 
     # Edge Input und Verarbeitung
     edge_input = layers.Input(shape=edge_input_shape, name="edge_input")
@@ -200,7 +200,7 @@ def create_pretrained_resnet_cnn_with_features(
 
     # Weitere Dense-Schichten nach der Kombination
     combined = layers.Dense(512, activation="relu")(combined)
-    combined = layers.Dropout(0.5)(combined)
+    combined = layers.Dropout(0.6)(combined)
     combined = layers.BatchNormalization()(combined)
     combined = layers.Dense(output_dim, activation="linear")(combined)
 
