@@ -178,5 +178,8 @@ data/
 model/
 logs/
 
+# Exclude all jupyter notebooks
+*.ipynb
+
 # MacOS
 .DS_Store
