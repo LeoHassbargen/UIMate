@@ -5,14 +5,14 @@ import pandas as pd
 import cv2
 
 
-def time_log(task_description, start_time):
+def time_log(task_description, start_time) -> float:
     """Logs the duration of a task, given a start time."""
     stop_time = time.time()
     print(f"{task_description} in {stop_time - start_time:.2f} seconds.")
     return stop_time
 
 
-def load_uicrit_dataset(uicrit_path):
+def load_uicrit_dataset(uicrit_path) -> pd.DataFrame:
     """Loads the UICrit dataset, removes unnecessary columns and NaN values."""
     print(f"Loading uicrit dataset from {uicrit_path}")
     start_time = time.time()
@@ -31,7 +31,7 @@ def load_uicrit_dataset(uicrit_path):
     return uicrit
 
 
-def normalize_and_standardize(uicrit, rating_scales):
+def normalize_and_standardize(uicrit, rating_scales) -> pd.DataFrame:
     """Normalizes and standardizes the UICrit dataset."""
     print("Normalizing the rating columns.")
     start_time = time.time()
@@ -52,7 +52,7 @@ def normalize_and_standardize(uicrit, rating_scales):
     return uicrit
 
 
-def load_images(image_names, combined_folder):
+def load_images(image_names, combined_folder) -> dict:
     """Loads the images into a dictionary."""
     print(f"Loading {len(image_names)} images from the combined folder.")
     start_time = time.time()
@@ -71,7 +71,7 @@ def load_images(image_names, combined_folder):
     return images
 
 
-def preprocess_images(images):
+def preprocess_images(images) -> dict:
     """Adds a black border to the images to make them square. Resizes them to 224x224 and normalizes their pixel values."""
 
     # Adding black edges to the images to make them square
@@ -92,9 +92,9 @@ def preprocess_images(images):
                 img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0]
             )
 
-    print("Resizing images to 224x224.")
+    print("Resizing images to 896x896.")
     start_time = time.time()
-    resized_images = {k: cv2.resize(img, (224, 224)) for k, img in images.items()}
+    resized_images = {k: cv2.resize(img, (896, 896)) for k, img in images.items()}
     time_log("Resized all images", start_time)
 
     print("Normalizing images.")
@@ -105,7 +105,7 @@ def preprocess_images(images):
     return normalized_images
 
 
-def perform_edge_detection(images):
+def perform_edge_detection(images) -> dict:
     """Performs canny edge detection on a dictionary of images."""
     print("Performing edge detection.")
     start_time = time.time()
@@ -122,7 +122,7 @@ def perform_edge_detection(images):
     return edges
 
 
-def calculate_color_histograms(images):
+def calculate_color_histograms(images) -> dict:
     """Calculates color histograms for a dictionary of images."""
     print("Calculating color histograms.")
     start_time = time.time()
@@ -138,7 +138,9 @@ def calculate_color_histograms(images):
     return color_histograms
 
 
-def save_data(images, edge_images, color_histograms, uicrit, rating_scales, data_dir):
+def save_data(
+    images, edge_images, color_histograms, uicrit, rating_scales, data_dir
+) -> None:
     """Saves images, UICrit, histograms, edges and rating scales."""
     os.makedirs(data_dir, exist_ok=True)
 
