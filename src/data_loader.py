@@ -65,7 +65,7 @@ common_ids = (
     & set(uicrit["rico_id"])
 )
 
-print(f"Anzahl der gemeinsamen 'rico_id's: {len(common_ids)}")
+print(f"Number of common 'rico_id's: {len(common_ids)}")
 
 # Initialisieren der Listen
 X_images = []
