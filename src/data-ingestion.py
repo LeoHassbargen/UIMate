@@ -1,190 +1,215 @@
-# Ingest all the data necessary to train the model. This file contains everything for the pipeline up to training the model.
-# 1. Load the uicrit dataset from the csv file and cutoff the comments as they are not needed
-# 2. Load the needed and available screenshots from the combined folder
-# 3. Preprocess the images and transform them into a smaller format
-# 4. Save the images and the uicrit dataset to the file system
-
-# 1.
-import json
 import os
-import pandas as pd
 import time
-
-uicrit_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "uicrit/uicrit_public.csv")
-)
-
-print(f"Loading uicrit dataset from {uicrit_path}")
-start_time = time.time()
-try:
-    uicrit = pd.read_csv(uicrit_path)
-except FileNotFoundError:
-    print(f"Error: Could not find the uicrit dataset at {uicrit_path}.")
-    exit(1)
-stop_time = time.time()
-print(f"Loaded the uicrit dataset in {stop_time - start_time} seconds.")
-print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
-
-# Cutoff the columns that are not needed: comments, comments_source
-uicrit = uicrit.drop(columns=["task", "comments", "comments_source"])
-print(f"Cut off the columns 'task', 'comments' and 'comments_source'.")
-
-# Remove all nan values
-uicrit = uicrit.dropna()
-
-# Define the rating scales
-rating_scales = {
-    "aesthetics_rating": 10,  # Scale 1-10
-    "learnability": 5,  # Scale 1-5
-    "efficency": 5,  # Scale 1-5
-    "usability_rating": 10,  # Scale 1-10
-    "design_quality_rating": 10,  # Scale 1-10
-}
-
-# Normalize the relevant rating columns
-# We divide each rating by its maximum value (specified above).
-# To scale the ratings to the range [0, 1].
-print("Normalizing the rating columns.")
-start_time = time.time()
-for col, scale in rating_scales.items():
-    if col in uicrit.columns:
-        uicrit[col] = uicrit[col] / scale
-        print(f"Normalized '{col}' by a factor of {scale}.")
-
-stop_time = time.time()
-print(f"Normalized all rating columns in {stop_time - start_time} seconds.")
-
-# Standardize the ratings
-# We subtract the mean and divide by the standard deviation.
-# This ensures that the ratings have a mean of 0 and a standard deviation of 1.
-
-print("Standardizing the rating columns.")
-start_time = time.time()
-
-for col in rating_scales.keys():
-    uicrit[col] = (uicrit[col] - uicrit[col].mean()) / uicrit[col].std()
-
-stop_time = time.time()
-print(f"Standardized all rating columns in {stop_time - start_time} seconds.")
-
-# Print the variance for each dimension
-print(f"Variance of the ratings:")
-for col in rating_scales.keys():
-    print(f"  {col}: {uicrit[col].var()}")
-
-# 2.
-import cv2
 import numpy as np
+import pandas as pd
+import cv2
 
-image_names = uicrit["rico_id"].values
 
-print(f"Loading {len(image_names)} images from the combined folder.")
-start_time = time.time()
-all_loaded = True
+def time_log(task_description, start_time):
+    """Logs the duration of a task, given a start time."""
+    stop_time = time.time()
+    print(f"{task_description} in {stop_time - start_time:.2f} seconds.")
+    return stop_time
 
-# Load the images from the combined folder
-images = {}
-start_time = time.time()
-for image_name in image_names:
-    image_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "combined", f"{image_name}.jpg")
+
+def load_uicrit_dataset(uicrit_path):
+    """Loads the UICrit dataset, removes unnecessary columns and NaN values."""
+    print(f"Loading uicrit dataset from {uicrit_path}")
+    start_time = time.time()
+    try:
+        uicrit = pd.read_csv(uicrit_path)
+    except FileNotFoundError:
+        print(f"Error: Could not find the uicrit dataset at {uicrit_path}.")
+        exit(1)
+    time_log("Loaded the uicrit dataset", start_time)
+    print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
+
+    # Unnötige Spalten entfernen und NaN löschen
+    uicrit = uicrit.drop(columns=["task", "comments", "comments_source"])
+    print("Cut off the columns 'task', 'comments' and 'comments_source'.")
+    uicrit = uicrit.dropna()
+    return uicrit
+
+
+def normalize_and_standardize(uicrit, rating_scales):
+    """Normalizes and standardizes the UICrit dataset."""
+    print("Normalizing the rating columns.")
+    start_time = time.time()
+    for col, scale in rating_scales.items():
+        if col in uicrit.columns:
+            uicrit[col] = uicrit[col] / scale
+    time_log("Normalized all rating columns", start_time)
+
+    print("Standardizing the rating columns.")
+    start_time = time.time()
+    for col in rating_scales.keys():
+        uicrit[col] = (uicrit[col] - uicrit[col].mean()) / uicrit[col].std()
+    time_log("Standardized all rating columns", start_time)
+
+    print("Variance of the ratings:")
+    for col in rating_scales.keys():
+        print(f"  {col}: {uicrit[col].var()}")
+    return uicrit
+
+
+def load_images(image_names, combined_folder):
+    """Loads the images into a dictionary."""
+    print(f"Loading {len(image_names)} images from the combined folder.")
+    start_time = time.time()
+    images = {}
+    all_loaded = True
+    for image_name in image_names:
+        image_path = os.path.join(combined_folder, f"{image_name}.jpg")
+        image = cv2.imread(image_path)
+        if image is not None:
+            images[image_name] = image
+        else:
+            all_loaded = False
+    time_log("Loaded the images", start_time)
+    print(f"Loaded {len(images)} images.")
+    print(f"All images loaded successfully: {all_loaded}")
+    return images
+
+
+def preprocess_images(images):
+    """Adds a black border to the images to make them square. Resizes them to 224x224 and normalizes their pixel values."""
+
+    # Adding black edges to the images to make them square
+    for k, img in images.items():
+        h, w, _ = img.shape
+        if h < w:
+            diff = w - h
+            top = diff // 2
+            bottom = diff - top
+            images[k] = cv2.copyMakeBorder(
+                img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=[0, 0, 0]
+            )
+        elif w < h:
+            diff = h - w
+            left = diff // 2
+            right = diff - left
+            images[k] = cv2.copyMakeBorder(
+                img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0]
+            )
+
+    print("Resizing images to 224x224.")
+    start_time = time.time()
+    resized_images = {k: cv2.resize(img, (224, 224)) for k, img in images.items()}
+    time_log("Resized all images", start_time)
+
+    print("Normalizing images.")
+    normalized_images = {
+        k: (img / 255.0).astype(np.float32) for k, img in resized_images.items()
+    }
+    print("Normalized all images.")
+    return normalized_images
+
+
+def perform_edge_detection(images):
+    """Performs canny edge detection on a dictionary of images."""
+    print("Performing edge detection.")
+    start_time = time.time()
+    edges = {}
+    for name, img in images.items():
+        # Ggf. Umwandlung in uint8
+        if img.dtype != np.uint8:
+            img_cv = (img * 255).astype(np.uint8)
+        else:
+            img_cv = img
+        edge_map = cv2.Canny(img_cv, 100, 200)
+        edges[name] = cv2.resize(edge_map.astype(np.float32) / 255.0, (56, 56))
+    time_log("Performed edge detection", start_time)
+    return edges
+
+
+def calculate_color_histograms(images):
+    """Calculates color histograms for a dictionary of images."""
+    print("Calculating color histograms.")
+    start_time = time.time()
+    color_histograms = {}
+    for name, img in images.items():
+        img_cv = (img * 255).astype(np.uint8) if img.dtype != np.uint8 else img
+        hist = cv2.calcHist(
+            [img_cv], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256]
+        )
+        hist = cv2.normalize(hist, hist).flatten()
+        color_histograms[name] = hist
+    time_log("Calculated color histograms", start_time)
+    return color_histograms
+
+
+def save_data(images, edge_images, color_histograms, uicrit, rating_scales, data_dir):
+    """Saves images, UICrit, histograms, edges and rating scales."""
+    os.makedirs(data_dir, exist_ok=True)
+
+    print(f"Saving images to {os.path.join(data_dir, 'images.npy')}.")
+    try:
+        np.save(os.path.join(data_dir, "images.npy"), images)
+        np.save(os.path.join(data_dir, "edge_images.npy"), edge_images)
+        np.save(os.path.join(data_dir, "color_histograms.npy"), color_histograms)
+    except FileNotFoundError:
+        print(
+            f"Error: Could not save images to {os.path.join(data_dir, 'images.npy')}."
+        )
+        exit(1)
+    print("Saved images.")
+
+    print(f"Saving uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
+    try:
+        uicrit.to_csv(os.path.join(data_dir, "uicrit.csv"))
+        np.save(os.path.join(data_dir, "rating_scales.npy"), rating_scales)
+    except FileNotFoundError:
+        print(
+            f"Error: Could not save the uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}."
+        )
+        exit(1)
+    print("Saved uicrit dataset.")
+
+
+def main():
+    # 1. Load the UICrit dataset
+    uicrit_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "uicrit/uicrit_public.csv")
     )
-    image = cv2.imread(image_path)
+    uicrit = load_uicrit_dataset(uicrit_path)
 
-    if image is not None:
-        images[image_name] = image
-    else:
-        all_loaded = False
+    # Define the rarting scales
+    rating_scales = {
+        "aesthetics_rating": 10,
+        "learnability": 5,
+        "efficency": 5,
+        "usability_rating": 10,
+        "design_quality_rating": 10,
+    }
+    # Normalize and standardize the dataset
+    uicrit = normalize_and_standardize(uicrit, rating_scales)
 
-
-stop_time = time.time()
-
-print(f"Loaded the images in {stop_time - start_time} seconds.")
-
-print(f"Loaded {len(images)} images.")
-print(f"All images loaded successfully: {all_loaded}")
-# 3.
-
-# Resize the images to 224x224
-print("Resizing images to 224x224.")
-start_time = time.time()
-images = {key: cv2.resize(image, (224, 224)) for key, image in images.items()}
-stop_time = time.time()
-print(f"Resized all images in {stop_time - start_time} seconds.")
-
-# Normalize the images
-print("Normalizing images.")
-images = {key: image / 255.0 for key, image in images.items()}
-print("Normalized all images.")
-
-# Convert the images to numpy arrays
-images = {key: np.array(image) for key, image in images.items()}
-
-# perform image transformation before edge detection
-print("Performing image transformations.")
-
-# check if the first image is of dtype np.uint8
-if images[image_names[0]].dtype != np.uint8:
-
-    # convert the images to np.uint8
-    images_cv = {key: (image * 255).astype(np.uint8) for key, image in images.items()}
-else:
-    images_cv = images
-
-# perform edge detection and store separately using the image_name
-print("Performing edge detection.")
-start_time = time.time()
-
-edge_images = {}
-for image_name, image in images_cv.items():
-    edges = cv2.Canny(image, 100, 200)
-    edges = edges.astype(np.float32) / 255.0
-    edge_pooled = cv2.resize(edges, (56, 56))
-    edge_images[image_name] = edge_pooled
-
-stop_time = time.time()
-print(f"Performed edge detection in {stop_time - start_time} seconds.")
-
-# Convert the edge images to numpy arrays
-edge_images = {key: np.array(image) for key, image in edge_images.items()}
-
-# calculate the color histograms and store separately using the image_name
-print("Calculating color histograms.")
-start_time = time.time()
-
-color_histograms = {}
-for image_name, image in images_cv.items():
-    hist = cv2.calcHist([image], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
-    hist = cv2.normalize(hist, hist).flatten()
-    color_histograms[image_name] = hist
-
-stop_time = time.time()
-print(f"Calculated color histograms in {stop_time - start_time} seconds.")
-
-# Ensure the data directory exists
-data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
-os.makedirs(data_dir, exist_ok=True)
-
-# Save both the images and the uicrit dataset to the file system
-print(f"Saving images to {os.path.join(data_dir, 'images.npy')}.")
-try:
-    np.save(os.path.join(data_dir, "images.npy"), images)
-    np.save(os.path.join(data_dir, "edge_images.npy"), edge_images)
-    np.save(os.path.join(data_dir, "color_histograms.npy"), color_histograms)
-except FileNotFoundError:
-    print(
-        f"Error: Could not save the images to {os.path.join(data_dir, 'images.npy')}."
+    # 2. Load the corresponding images
+    image_names = uicrit["rico_id"].values
+    combined_folder = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "combined")
     )
-    exit(1)
-print("Saved images.")
+    images = load_images(image_names, combined_folder)
 
-print(f"Saving uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
-try:
-    uicrit.to_csv(os.path.join(data_dir, "uicrit.csv"))
-    np.save(os.path.join(data_dir, "rating_scales.npy"), rating_scales)
-except FileNotFoundError:
-    print(
-        f"Error: Could not save the uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}."
-    )
-    exit(1)
-print("Saved uicrit dataset.")
+    # 3. Preprocess the images
+    images = preprocess_images(images)
+
+    # Show one image randomly
+    import random
+    import matplotlib.pyplot as plt
+
+    random_image = random.choice(list(images.values()))
+    plt.imshow(random_image)
+    plt.show()
+
+    # 4. Edge Detection, Color-Histograms
+    edge_images = perform_edge_detection(images)
+    color_histograms = calculate_color_histograms(images)
+
+    # Saving
+    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+    save_data(images, edge_images, color_histograms, uicrit, rating_scales, data_dir)
+
+
+if __name__ == "__main__":
+    main()
