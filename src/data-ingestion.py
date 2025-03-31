@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import cv2
 
+import matplotlib.pyplot as plt
+
 
 def time_log(task_description, start_time) -> float:
     """Logs the duration of a task, given a start time."""
@@ -24,7 +26,7 @@ def load_uicrit_dataset(uicrit_path) -> pd.DataFrame:
     time_log("Loaded the uicrit dataset", start_time)
     print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
 
-    # Unnötige Spalten entfernen und NaN löschen
+    # drop unnecessary columns and any nans
     uicrit = uicrit.drop(columns=["task", "comments", "comments_source"])
     print("Cut off the columns 'task', 'comments' and 'comments_source'.")
     uicrit = uicrit.dropna()
@@ -71,10 +73,10 @@ def load_images(image_names, combined_folder) -> dict:
     return images
 
 
-def preprocess_images(images) -> dict:
+def preprocess_images(images, normalize=True) -> dict:
     """Adds a black border to the images to make them square. Resizes them to 224x224 and normalizes their pixel values."""
 
-    # Adding black edges to the images to make them square
+    # adding black edges to the images to make them square
     for k, img in images.items():
         h, w, _ = img.shape
         if h < w:
@@ -97,12 +99,21 @@ def preprocess_images(images) -> dict:
     resized_images = {k: cv2.resize(img, (896, 896)) for k, img in images.items()}
     time_log("Resized all images", start_time)
 
-    print("Normalizing images.")
-    normalized_images = {
-        k: (img / 255.0).astype(np.float32) for k, img in resized_images.items()
-    }
-    print("Normalized all images.")
-    return normalized_images
+    # normalizing depending on the boolean flag
+    # yes, I know boolean flags are bad :-)
+    if normalize:
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+
+        print("Normalizing images (Zero-Mean, Unit-Variance).")
+        normalized_images = {
+            k: ((img.astype(np.float32) / 255.0 - mean) / std)
+            for k, img in resized_images.items()
+        }
+        print("Standardized all images.")
+        return normalized_images
+
+    return resized_images
 
 
 def perform_edge_detection(images) -> dict:
@@ -111,7 +122,7 @@ def perform_edge_detection(images) -> dict:
     start_time = time.time()
     edges = {}
     for name, img in images.items():
-        # Ggf. Umwandlung in uint8
+        # maybe necessary to convert to uint8
         if img.dtype != np.uint8:
             img_cv = (img * 255).astype(np.uint8)
         else:
@@ -139,16 +150,27 @@ def calculate_color_histograms(images) -> dict:
 
 
 def save_data(
-    images, edge_images, color_histograms, uicrit, rating_scales, data_dir
+    data_dir,
+    images=None,
+    edge_images=None,
+    color_histograms=None,
+    uicrit=None,
+    rating_scales=None,
 ) -> None:
     """Saves images, UICrit, histograms, edges and rating scales."""
     os.makedirs(data_dir, exist_ok=True)
 
     print(f"Saving images to {os.path.join(data_dir, 'images.npy')}.")
     try:
-        np.save(os.path.join(data_dir, "images.npy"), images)
-        np.save(os.path.join(data_dir, "edge_images.npy"), edge_images)
-        np.save(os.path.join(data_dir, "color_histograms.npy"), color_histograms)
+        if images is not None:
+            print("Saving images…")
+            np.save(os.path.join(data_dir, "images.npy"), images)
+        if edge_images is not None:
+            print("Saving edge_images…")
+            np.save(os.path.join(data_dir, "edge_images.npy"), edge_images)
+        if color_histograms is not None:
+            print("Saving color_histograms…")
+            np.save(os.path.join(data_dir, "color_histograms.npy"), color_histograms)
     except FileNotFoundError:
         print(
             f"Error: Could not save images to {os.path.join(data_dir, 'images.npy')}."
@@ -158,8 +180,12 @@ def save_data(
 
     print(f"Saving uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}.")
     try:
-        uicrit.to_csv(os.path.join(data_dir, "uicrit.csv"))
-        np.save(os.path.join(data_dir, "rating_scales.npy"), rating_scales)
+        if uicrit is not None:
+            print("Saving UICrit dataset…")
+            uicrit.to_csv(os.path.join(data_dir, "uicrit.csv"))
+        if rating_scales is not None:
+            print("Saving rating_scales…")
+            np.save(os.path.join(data_dir, "rating_scales.npy"), rating_scales)
     except FileNotFoundError:
         print(
             f"Error: Could not save the uicrit dataset to {os.path.join(data_dir, 'uicrit.csv')}."
@@ -175,18 +201,18 @@ def main():
     )
     uicrit = load_uicrit_dataset(uicrit_path)
 
-    # Define the rarting scales
+    # define the rarting scales
     rating_scales = {
         "aesthetics_rating": 10,
         "learnability": 5,
         "efficency": 5,
         "usability_rating": 10,
-        "design_quality_rating": 10,
+        "design_quality_rating": 9,
     }
-    # Normalize and standardize the dataset
-    uicrit = normalize_and_standardize(uicrit, rating_scales)
+    # normalize and standardize the dataset
+    # uicrit = normalize_and_standardize(uicrit, rating_scales)
 
-    # 2. Load the corresponding images
+    # 2. load the corresponding images
     image_names = uicrit["rico_id"].values
     combined_folder = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "combined")
@@ -194,23 +220,33 @@ def main():
     images = load_images(image_names, combined_folder)
 
     # 3. Preprocess the images
-    images = preprocess_images(images)
+    images = preprocess_images(images, normalize=False)
+    # show one image randomly
+    # import random
+    # import matplotlib.pyplot as plt
 
-    # Show one image randomly
-    import random
-    import matplotlib.pyplot as plt
-
-    random_image = random.choice(list(images.values()))
-    plt.imshow(random_image)
-    plt.show()
+    # random_image = random.choice(list(images.values()))
+    # plt.imshow(random_image)
+    # plt.show()
 
     # 4. Edge Detection, Color-Histograms
-    edge_images = perform_edge_detection(images)
-    color_histograms = calculate_color_histograms(images)
+    print("Skipping edge detection and histograms, for now…")
+    # edge_images = perform_edge_detection(images)
+    # color_histograms = calculate_color_histograms(images)
 
-    # Saving
+    # saving
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
-    save_data(images, edge_images, color_histograms, uicrit, rating_scales, data_dir)
+
+    # generate images for the distribution of all columns in rating scales in uicrit
+    for col in rating_scales.keys():
+        if col in uicrit.columns:
+            uicrit[col].hist()
+            plt.title(col)
+            # plt.show()
+            plt.savefig(os.path.join(data_dir, f"{col}.png"))
+            plt.close()
+
+    save_data(data_dir, images=images, uicrit=uicrit, rating_scales=rating_scales)
 
 
 if __name__ == "__main__":
