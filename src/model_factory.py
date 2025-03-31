@@ -12,7 +12,7 @@ design_quality_mean = 0.581577
 
 N_edge_features = 50176
 
-# Put them in a float32 array:
+# put them in a float32 array:
 output_means = np.array(
     [
         aesthetics_mean,
@@ -34,9 +34,7 @@ class MeanBaselineLayer(tf.keras.layers.Layer):
     def __init__(self, means, trainable=False, **kwargs):
         super().__init__(**kwargs)
 
-        # Store the means in a TF variable. By default, it's non-trainable
-        # for a "true" baseline. If you set trainable=True, the model can
-        # learn the best constant offset during fit.
+        # store the means in a TF variable.
         self.means = tf.Variable(
             initial_value=means,
             trainable=trainable,
@@ -47,7 +45,7 @@ class MeanBaselineLayer(tf.keras.layers.Layer):
     def call(self, inputs):
         # inputs.shape -> (batch_size, anything)
         batch_size = tf.shape(inputs)[0]
-        # Repeat the means for each sample in the batch
+        # repeat the means for each sample in the batch
         return tf.tile(tf.reshape(self.means, [1, -1]), [batch_size, 1])
 
     def get_config(self):
@@ -55,7 +53,7 @@ class MeanBaselineLayer(tf.keras.layers.Layer):
         Return a dictionary containing the configuration used to initialize this layer.
         """
         base_config = super().get_config()
-        # Convert the tensor to a Python list so it can be serialized in JSON.
+        # convert the tensor to a Python list so it can be serialized in JSON.
         means_list = self.means.numpy().tolist()
 
         config = {**base_config, "means": means_list, "trainable": self.means.trainable}
@@ -80,12 +78,9 @@ def create_mean_baseline_model(input_shape, means=output_means, trainable=False)
 
     Args:
         means (list or np.array): 1D array of length = number of target dims
-        trainable (bool): Whether we allow this constant to be adjusted
-                          during `model.fit()`. Usually False for a pure
-                          baseline, True if you want to let it "learn"
-                          the best constant offset.
+        trainable (bool): Usually false.
     """
-    # Define a dummy input layer. The shape can be anything as it will be ignored.
+    # define a dummy input layer. The shape can be anything as it will be ignored.
     inputs = tf.keras.Input(shape=input_shape)
     outputs = MeanBaselineLayer(means, trainable=trainable)(inputs)
     model = tf.keras.Model(inputs, outputs, name="mean_baseline_model")
@@ -97,14 +92,14 @@ def create_simple_cnn(input_shape=(224, 224, 3), output_dim=5):
     output_dim=5, z.B. [ aesth, learn, effic, usability, design_quality ]
     """
     model = models.Sequential()
-    # Define an explicit input layer
+    # define an explicit input layer
     model.add(tf.keras.Input(shape=input_shape))
 
-    # First convolution layer
+    # first convolution layer
     model.add(layers.Conv2D(32, (3, 3), activation="relu"))
     model.add(layers.MaxPooling2D((2, 2)))
 
-    # Second convolution layer
+    # second convolution layer
     model.add(layers.Conv2D(64, (3, 3), activation="relu"))
     model.add(layers.MaxPooling2D((2, 2)))
 
@@ -116,7 +111,7 @@ def create_simple_cnn(input_shape=(224, 224, 3), output_dim=5):
     return model, "simple-cnn"
 
 
-# As the dataset probably does not support a CNN using simple pixel inputs, we now want to use a pre-trained model.
+# as the dataset probably does not support a CNN using simple pixel inputs, we now want to use a pre-trained model.
 def create_pretrained_resnet_cnn(
     input_shape=(224, 224, 3), output_dim=5, trainable=False
 ):
@@ -154,21 +149,20 @@ def create_pretrained_resnet_cnn_with_features(
     trainable=False,
 ):
     """
-    Erstellt ein Modell mit vortrainiertem ResNet und zusätzlichen Eingängen für Histogramme und Edges.
+    Creates a model with a pretrained resnet and additional features.
 
     Args:
-        input_shape (tuple): Form der Bilddaten.
-        output_dim (int): Anzahl der Ausgabedimensionen.
-        trainable (bool): Ob die ResNet-Gewichte trainierbar sind.
-        histogram_input_shape (tuple): Form der Histogramm-Daten.
-        edge_input_shape (tuple): Form der Edge-Daten.
+        input_shape (tuple): shape of the image data.
+        output_dim (int): number of output dims.
+        trainable (bool): if the resnet should be freezed
+        histogram_input_shape (tuple): shape of histogram data.
+        edge_input_shape (tuple): shape of edge data.
 
     Returns:
-        model (tf.keras.Model): Das kombinierte Modell.
-        str: Basisname des Modells.
+        model (tf.keras.Model): the combined model.
+        str: base name of the model.
     """
 
-    # Image Input und ResNet Verarbeitung
     image_input = layers.Input(shape=input_shape, name="image_input")
     resnet = tf.keras.applications.ResNet152V2(
         include_top=False, weights="imagenet", input_shape=input_shape
@@ -182,29 +176,29 @@ def create_pretrained_resnet_cnn_with_features(
     x = layers.Dense(256, activation="relu")(x)
     x = layers.Dropout(0.5)(x)
 
-    # Histogram Input und Verarbeitung
+    # histograms
     histogram_input = layers.Input(shape=histogram_input_shape, name="histogram_input")
     h = layers.Dense(128, activation="relu")(histogram_input)
     h = layers.BatchNormalization()(h)
     h = layers.Dropout(0.3)(h)
 
-    # Edge Input und Verarbeitung
+    # edges
     edge_input = layers.Input(shape=edge_input_shape, name="edge_input")
     e = layers.Flatten()(edge_input)  # Flatten der Edge-Daten
     e = layers.Dense(128, activation="relu")(e)
     e = layers.BatchNormalization()(e)
     e = layers.Dropout(0.3)(e)
 
-    # Kombination der Features
+    # combination
     combined = layers.concatenate([x, h, e])
 
-    # Weitere Dense-Schichten nach der Kombination
+    # more dense layers
     combined = layers.Dense(512, activation="relu")(combined)
     combined = layers.Dropout(0.5)(combined)
     combined = layers.BatchNormalization()(combined)
     combined = layers.Dense(output_dim, activation="linear")(combined)
 
-    # Modell definieren
+    # define the model
     model = Model(
         inputs=[image_input, histogram_input, edge_input],
         outputs=combined,

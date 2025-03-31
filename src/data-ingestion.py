@@ -25,14 +25,14 @@ stop_time = time.time()
 print(f"Loaded the uicrit dataset in {stop_time - start_time} seconds.")
 print(f"Loaded uicrit dataset with {len(uicrit)} entries.")
 
-# Cutoff the columns that are not needed: comments, comments_source
+# cutoff the columns that are not needed: comments, comments_source
 uicrit = uicrit.drop(columns=["task", "comments", "comments_source"])
 print(f"Cut off the columns 'task', 'comments' and 'comments_source'.")
 
-# Remove all nan values
+# remove all nan values
 uicrit = uicrit.dropna()
 
-# Define the rating scales
+# define the rating scales
 rating_scales = {
     "aesthetics_rating": 10,  # Scale 1-10
     "learnability": 5,  # Scale 1-5
@@ -41,9 +41,7 @@ rating_scales = {
     "design_quality_rating": 10,  # Scale 1-10
 }
 
-# Normalize the relevant rating columns
-# We divide each rating by its maximum value (specified above).
-# To scale the ratings to the range [0, 1].
+# normalize the relevant rating columns
 print("Normalizing the rating columns.")
 start_time = time.time()
 for col, scale in rating_scales.items():
@@ -54,9 +52,7 @@ for col, scale in rating_scales.items():
 stop_time = time.time()
 print(f"Normalized all rating columns in {stop_time - start_time} seconds.")
 
-# Standardize the ratings
-# We subtract the mean and divide by the standard deviation.
-# This ensures that the ratings have a mean of 0 and a standard deviation of 1.
+# standardize the ratings
 
 print("Standardizing the rating columns.")
 start_time = time.time()
@@ -67,7 +63,7 @@ for col in rating_scales.keys():
 stop_time = time.time()
 print(f"Standardized all rating columns in {stop_time - start_time} seconds.")
 
-# Print the variance for each dimension
+# print the variance for each dimension
 print(f"Variance of the ratings:")
 for col in rating_scales.keys():
     print(f"  {col}: {uicrit[col].var()}")
@@ -82,7 +78,7 @@ print(f"Loading {len(image_names)} images from the combined folder.")
 start_time = time.time()
 all_loaded = True
 
-# Load the images from the combined folder
+# load the images from the combined folder
 images = {}
 start_time = time.time()
 for image_name in image_names:
@@ -105,19 +101,19 @@ print(f"Loaded {len(images)} images.")
 print(f"All images loaded successfully: {all_loaded}")
 # 3.
 
-# Resize the images to 224x224
+# resize the images to 224x224
 print("Resizing images to 224x224.")
 start_time = time.time()
 images = {key: cv2.resize(image, (224, 224)) for key, image in images.items()}
 stop_time = time.time()
 print(f"Resized all images in {stop_time - start_time} seconds.")
 
-# Normalize the images
+# normalize the images
 print("Normalizing images.")
 images = {key: image / 255.0 for key, image in images.items()}
 print("Normalized all images.")
 
-# Convert the images to numpy arrays
+# convert the images to numpy arrays
 images = {key: np.array(image) for key, image in images.items()}
 
 # perform image transformation before edge detection
@@ -145,7 +141,7 @@ for image_name, image in images_cv.items():
 stop_time = time.time()
 print(f"Performed edge detection in {stop_time - start_time} seconds.")
 
-# Convert the edge images to numpy arrays
+# convert the edge images to numpy arrays
 edge_images = {key: np.array(image) for key, image in edge_images.items()}
 
 # calculate the color histograms and store separately using the image_name
@@ -161,11 +157,11 @@ for image_name, image in images_cv.items():
 stop_time = time.time()
 print(f"Calculated color histograms in {stop_time - start_time} seconds.")
 
-# Ensure the data directory exists
+# ensure the data directory exists
 data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 os.makedirs(data_dir, exist_ok=True)
 
-# Save both the images and the uicrit dataset to the file system
+# save both the images and the uicrit dataset to the file system
 print(f"Saving images to {os.path.join(data_dir, 'images.npy')}.")
 try:
     np.save(os.path.join(data_dir, "images.npy"), images)
