@@ -12,7 +12,7 @@ design_quality_mean = 0.581577
 
 N_edge_features = 50176
 
-# Put them in a float32 array:
+# put them in a float32 array:
 output_means = np.array(
     [
         aesthetics_mean,
@@ -76,16 +76,13 @@ class MeanBaselineLayer(tf.keras.layers.Layer):
 
 def create_mean_baseline_model(input_shape, means=output_means, trainable=False):
     """
-    Builds a Keras model whose output is always `means`.
+    build a mean keras model, always returning the mean of the dimension (hardcoded).
 
     Args:
-        means (list or np.array): 1D array of length = number of target dims
-        trainable (bool): Whether we allow this constant to be adjusted
-                          during `model.fit()`. Usually False for a pure
-                          baseline, True if you want to let it "learn"
-                          the best constant offset.
+        means (list or np.array): the mean for every dimension in a 1D array.
+        trainable (bool): Usually false.
     """
-    # Define a dummy input layer. The shape can be anything as it will be ignored.
+    # define a dummy input layer. The shape can be anything as it will be ignored.
     inputs = tf.keras.Input(shape=input_shape)
     outputs = MeanBaselineLayer(means, trainable=trainable)(inputs)
     model = tf.keras.Model(inputs, outputs, name="mean_baseline_model")
@@ -93,18 +90,15 @@ def create_mean_baseline_model(input_shape, means=output_means, trainable=False)
 
 
 def create_simple_cnn(input_shape=(224, 224, 3), output_dim=5):
-    """
-    output_dim=5, z.B. [ aesth, learn, effic, usability, design_quality ]
-    """
     model = models.Sequential()
-    # Define an explicit input layer
+    # define an explicit input layer
     model.add(tf.keras.Input(shape=input_shape))
 
-    # First convolution layer
+    # first convolution layer
     model.add(layers.Conv2D(32, (3, 3), activation="relu"))
     model.add(layers.MaxPooling2D((2, 2)))
 
-    # Second convolution layer
+    # second convolution layer
     model.add(layers.Conv2D(64, (3, 3), activation="relu"))
     model.add(layers.MaxPooling2D((2, 2)))
 
@@ -129,7 +123,7 @@ def create_pretrained_resnet_cnn(
 
     resnet.trainable = trainable
 
-    # Build the full model
+    # build the full model
     model = models.Sequential(
         [
             resnet,
@@ -154,21 +148,22 @@ def create_pretrained_resnet_cnn_with_features(
     trainable=False,
 ):
     """
-    Erstellt ein Modell mit vortrainiertem ResNet und zusätzlichen Eingängen für Histogramme und Edges.
+    Creates a combined model on top of a resnet base model. This gets histogram and edge data
+    as additional inputs.
 
-    Args:
-        input_shape (tuple): Form der Bilddaten.
-        output_dim (int): Anzahl der Ausgabedimensionen.
-        trainable (bool): Ob die ResNet-Gewichte trainierbar sind.
-        histogram_input_shape (tuple): Form der Histogramm-Daten.
-        edge_input_shape (tuple): Form der Edge-Daten.
+     Args:
+         input_shape (tuple): Form der Bilddaten.
+         output_dim (int): Anzahl der Ausgabedimensionen.
+         trainable (bool): Ob die ResNet-Gewichte trainierbar sind.
+         histogram_input_shape (tuple): Form der Histogramm-Daten.
+         edge_input_shape (tuple): shape of edge data.
 
-    Returns:
-        model (tf.keras.Model): Das kombinierte Modell.
-        str: Basisname des Modells.
+     Returns:
+         model (tf.keras.Model): combined model.
+         str: base name of the model.
     """
 
-    # Image Input und ResNet Verarbeitung
+    # image input and resnet
     image_input = layers.Input(shape=input_shape, name="image_input")
     resnet = tf.keras.applications.ResNet152V2(
         include_top=False, weights="imagenet", input_shape=input_shape
@@ -182,29 +177,29 @@ def create_pretrained_resnet_cnn_with_features(
     x = layers.Dense(256, activation="relu")(x)
     x = layers.Dropout(0.5)(x)
 
-    # Histogram Input und Verarbeitung
+    # histogram input
     histogram_input = layers.Input(shape=histogram_input_shape, name="histogram_input")
     h = layers.Dense(128, activation="relu")(histogram_input)
     h = layers.BatchNormalization()(h)
     h = layers.Dropout(0.3)(h)
 
-    # Edge Input und Verarbeitung
+    # edge input
     edge_input = layers.Input(shape=edge_input_shape, name="edge_input")
-    e = layers.Flatten()(edge_input)  # Flatten der Edge-Daten
+    e = layers.Flatten()(edge_input)
     e = layers.Dense(128, activation="relu")(e)
     e = layers.BatchNormalization()(e)
     e = layers.Dropout(0.3)(e)
 
-    # Kombination der Features
+    # combine features
     combined = layers.concatenate([x, h, e])
 
-    # Weitere Dense-Schichten nach der Kombination
+    # more dense layers
     combined = layers.Dense(512, activation="relu")(combined)
     combined = layers.Dropout(0.5)(combined)
     combined = layers.BatchNormalization()(combined)
     combined = layers.Dense(output_dim, activation="linear")(combined)
 
-    # Modell definieren
+    # define model
     model = Model(
         inputs=[image_input, histogram_input, edge_input],
         outputs=combined,
@@ -212,3 +207,95 @@ def create_pretrained_resnet_cnn_with_features(
     )
 
     return model, "resnet-cnn-with-features"
+
+
+def create_cnn_softmax_output(num_classes, input_shape=(224, 224, 3)):
+    """
+    Creates a CNN model with softmax output for a classification task.
+    No dropout.
+
+    Args:
+        num_classes (int): Number of classes.
+        input_shape (tuple): Shape of the image data.
+
+    Returns:
+        model (tf.keras.Model): The CNN model.
+        str: Base name of the model.
+    """
+    model = models.Sequential()
+    # define an explicit input layer
+    model.add(tf.keras.Input(shape=input_shape))
+
+    # first convolutional layer
+    model.add(layers.Conv2D(32, (3, 3), activation="relu"))
+    model.add(layers.MaxPooling2D((2, 2)))
+
+    # second convolutional layer
+    model.add(layers.Conv2D(64, (3, 3), activation="relu"))
+    model.add(layers.MaxPooling2D((2, 2)))
+
+    # flatten and dense layer (without dropout)
+    model.add(layers.Flatten())
+    model.add(layers.Dense(64, activation="relu"))
+
+    # final output layer with softmax activation for classification
+    model.add(layers.Dense(num_classes, activation="softmax"))
+
+    return model, "cnn-softmax"
+
+
+def create_resnet_cnn_softmax_output(
+    num_classes, input_shape=(224, 224, 3), trainable=False
+):
+    """
+    Creates a CNN model with a pre-trained ResNet base model and softmax output for a classification task.
+
+    Args:
+        num_classes (int): Number of classes.
+        input_shape (tuple): Shape of the image data.
+        trainable (bool): Whether the ResNet weights should be trainable.
+
+    Returns:
+        model (tf.keras.Model): The ResNet-based CNN model.
+        str: Base name of the model.
+    """
+    # create the ResNet base model
+    resnet = tf.keras.applications.ResNet152V2(
+        include_top=False, weights="imagenet", input_shape=input_shape
+    )
+    resnet.trainable = trainable
+
+    # build the full model
+    model = models.Sequential(
+        [
+            resnet,
+            layers.GlobalAveragePooling2D(),
+            layers.Dense(128, activation="relu"),
+            layers.Dropout(0.5),
+            layers.BatchNormalization(),
+            layers.Dense(64, activation="relu"),
+            layers.Dropout(0.3),
+            layers.Dense(num_classes, activation="softmax"),
+        ]
+    )
+
+    return model, "resnet-cnn-softmax"
+
+
+def create_simpler_cnn_softmax_output(num_classes, input_shape=(224, 224, 3)):
+    model = models.Sequential(
+        [
+            tf.keras.Input(shape=input_shape),
+            layers.Conv2D(16, (3, 3), activation="relu", padding="same"),
+            layers.MaxPooling2D((4, 4)),
+            layers.Conv2D(32, (3, 3), activation="relu", padding="same"),
+            layers.MaxPooling2D((4, 4)),
+            layers.Conv2D(64, (3, 3), activation="relu", padding="same"),
+            layers.MaxPooling2D((4, 4)),
+            layers.Flatten(),
+            layers.Dense(128, activation="relu"),
+            layers.Dropout(0.5),
+            layers.Dense(num_classes, activation="softmax"),
+        ]
+    )
+    return model, "simple-cnn-softmax"
