@@ -22,10 +22,10 @@ from data_loader import (
     get_mean_ratings,
 )
 
-# Fügen Sie den Pfad zu src/train hinzu
+# add the path to the src directory to the sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "train")))
 
-# Import weighted_mse_around_mean from src/train/loss.py
+# import weighted_mse_around_mean from src/train/loss.py
 from loss import weighted_mse_around_mean
 
 from model_factory import (
@@ -38,10 +38,10 @@ from model_factory import (
 
 LOSS = os.getenv("LOSS", "mse")
 
-# Get the training data:
+# get the training data:
 X_train, y_train = get_training_data()
 
-# Get the validation data:
+# get the validation data:
 X_val, y_val = get_validation_data()
 
 # 5. Define the model

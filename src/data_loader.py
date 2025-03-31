@@ -67,29 +67,27 @@ common_ids = (
 
 print(f"Anzahl der gemeinsamen 'rico_id's: {len(common_ids)}")
 
-# Initialisieren der Listen
+# initialize empty lists
 X_images = []
 X_histograms = []
 X_edges = []
 y = []
 
-# Iterieren über die gemeinsamen 'rico_id's
+# iterate over rico_ids
 for rico_id in common_ids:
-    # Bilder
-    image = (
-        images_dict[rico_id].astype(np.float32) / 255.0
-    )  # Normalisierung, falls nicht bereits erfolgt
+    # images
+    image = images_dict[rico_id].astype(np.float32) / 255.0
     X_images.append(image)
 
-    # Histograms
+    # histograms
     hist = images_histograms[rico_id].astype(np.float32)
     X_histograms.append(hist)
 
-    # Edges
+    # edges
     edges = images_edges[rico_id].astype(np.float32)
     X_edges.append(edges)
 
-    # Ratings
+    # ratings
     ratings_array = [
         uicrit.loc[uicrit["rico_id"] == rico_id, "aesthetics_rating"].values[0],
         uicrit.loc[uicrit["rico_id"] == rico_id, "learnability"].values[0],
@@ -99,7 +97,7 @@ for rico_id in common_ids:
     ]
     y.append(ratings_array)
 
-# Konvertieren der Listen zu numpy-Arrays
+# convert lists to numpy arrays
 X_images = np.array(X_images, dtype=np.float32)
 X_histograms = np.array(X_histograms, dtype=np.float32)
 X_edges = np.array(X_edges, dtype=np.float32)
@@ -109,13 +107,11 @@ print(
     f"Created arrays for {len(X_images)} images matching 'rico_id' and the 5 rating columns."
 )
 
-# Überprüfen auf fehlende Werte
+# check missing values
 if np.isnan(X_histograms).any() or np.isnan(X_edges).any() or np.isnan(y).any():
     print(
         "Warnung: Fehlende Werte in den Daten erkannt. Bitte bereinigen Sie die Daten."
     )
-    # Optional: Implementieren Sie eine Strategie zur Behandlung fehlender Werte
-    # Zum Beispiel: Entfernen der betroffenen Beispiele
     mask = ~(
         np.isnan(X_histograms).any(axis=1)
         | np.isnan(X_edges).any(axis=1)
@@ -129,7 +125,7 @@ if np.isnan(X_histograms).any() or np.isnan(X_edges).any() or np.isnan(y).any():
 else:
     print("No missing values.")
 
-# Split der Daten
+# split
 (
     X_train_images,
     X_val_images,
@@ -149,7 +145,7 @@ else:
     shuffle=True,
 )
 
-# Strukturieren der Daten als Dictionaries für mehrere Eingaben
+# structure as dicts
 X_train = {
     "image_input": X_train_images,
     "histogram_input": X_train_histograms,
