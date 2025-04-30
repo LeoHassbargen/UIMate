@@ -38,6 +38,8 @@ def evaluate_model(model_path, X_val, y_val):
 
     # 2) Loop through each dimension to compute metrics individually
     print("\nDetailed per-dimension metrics:")
+    per_dimension_metrics = {}
+
     for i, rating_name in enumerate(rating_scales.keys()):
         dim_mse = mean_squared_error(y_val[:, i], predictions[:, i])
         dim_mae = mean_absolute_error(y_val[:, i], predictions[:, i])
